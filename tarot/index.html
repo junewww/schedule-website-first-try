@@ -114,6 +114,10 @@ textarea:focus{border-color:var(--accent)}
 .chip.custom .x{margin-left:4px;opacity:.7}
 .kw-group{margin-top:8px}
 .kw-group .lbl{font-size:12px;color:var(--muted);margin-bottom:4px}
+.kw-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;padding:8px 12px;border-radius:9px;background:var(--surface-2);color:var(--muted);margin-bottom:4px}
+.kw-status.has{background:var(--accent-soft);color:var(--text)}
+.kw-status .sugw{border:1px dashed var(--gold);border-radius:999px;padding:0 7px;margin:0 1px;white-space:nowrap}
+.kw-status .btn{margin-left:auto;padding:3px 10px}
 .kw-add{display:flex;gap:6px;margin-top:10px}
 .kw-add input{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:5px 9px;outline:none}
 .reveal-btn{width:100%;padding:12px;border:1px dashed var(--gold);background:none;border-radius:12px;color:var(--accent);font-family:var(--serif);font-size:15px}
@@ -463,7 +467,7 @@ function openDay(ds) {
           <div class="sub">今天发生的、能与这张牌对应起来的事。</div>
           <label class="f" for="fEvents">今天对应这张牌的事情</label>
           <textarea id="fEvents" style="min-height:110px" placeholder="例：下午差点和同事吵起来，最后还是耐心地沟通，找到了中间方案…">${esc(e.events)}</textarea>
-          <label class="f">被印证的关键词 <span class="hint">（点选今天真正应验的；虚线框是根据你的记录自动找到的建议）</span></label>
+          <label class="f">被印证的关键词 <span class="hint">（点选今天真正应验的词，选中的会显示在月历上）</span></label>
           <div id="kwBox"></div>
         </div>
         <div id="interpBox"></div>
@@ -496,12 +500,19 @@ function openDay(ds) {
     const sug = suggestKw(c, e.rev, allText());
     const chip = k => `<button class="chip ${e.kw.includes(k.name) ? 'on' : ''} ${sug.includes(k.name) && !e.kw.includes(k.name) ? 'sug' : ''}" data-kw="${esc(k.name)}">${esc(k.name)}</button>`;
     const main = e.rev ? c._kwR : c._kwU, other = e.rev ? c._kwU : c._kwR;
-    box.innerHTML = `
+    const pending = sug.filter(s => !e.kw.includes(s));
+    const status = pending.length
+      ? `<div class="kw-status has"><span>✦ 从你写的内容里找到 ${pending.length} 个可能应验的词：${pending.map(k => `<span class="sugw">${esc(k)}</span>`).join('')}</span><button class="btn primary" id="autoKw">全部选上</button></div>`
+      : `<div class="kw-status">${e.kw.length || e.custom.length
+          ? `已选 ${e.kw.length + e.custom.length} 个关键词。继续写记录时，若有新对上的词会出现在这里。`
+          : (allText().trim()
+              ? '你写的内容里暂时没有直接对上这张牌关键词的词。可以直接点选下面的词，或在最下面添加自己的。'
+              : '写下观察、感受和今天的事情后，这里会提示哪些关键词可能应验了。')}</div>`;
+    box.innerHTML = `${status}
       <div class="kw-group"><div class="lbl">${e.rev ? '逆位' : '正位'}关键词</div><div class="chips">${main.map(chip).join('')}</div></div>
       <div class="kw-group"><div class="lbl">${e.rev ? '正位' : '逆位'}关键词（有时也会应验）</div><div class="chips">${other.map(chip).join('')}</div></div>
       ${e.custom.length ? `<div class="kw-group"><div class="lbl">我自己的关键词</div><div class="chips">${e.custom.map((k, i) => `<button class="chip on custom" data-ci="${i}">${esc(k)}<span class="x">×</span></button>`).join('')}</div></div>` : ''}
       <div class="kw-add">
-        <button class="btn" id="autoKw" ${sug.filter(s => !e.kw.includes(s)).length ? '' : 'disabled'}>✦ 采纳建议（${sug.filter(s => !e.kw.includes(s)).length}）</button>
         <input id="customKw" placeholder="添加自己的关键词，回车确认">
       </div>`;
   };
@@ -515,6 +526,7 @@ function openDay(ds) {
   };
 
   // 事件
+  let kwT;
   makeCombo(ov.querySelector('#pickBox'), {
     placeholder: '输入牌名…',
     value: e.card ? `${BY_ID[e.card].zh} ${BY_ID[e.card].en}` : '',
@@ -524,8 +536,7 @@ function openDay(ds) {
   ov.querySelector('#seg').onclick = ev => { const b = ev.target.closest('button'); if (!b) return; e.rev = b.dataset.r === '1'; renderCard(); save(); };
   [['#fObserve', 'observe'], ['#fFeel', 'feel'], ['#fEvents', 'events']].forEach(([sel, k]) => {
     const ta = ov.querySelector(sel);
-    ta.addEventListener('input', () => { e[k] = ta.value; saveSoon(); });
-    ta.addEventListener('blur', renderKw);
+    ta.addEventListener('input', () => { e[k] = ta.value; saveSoon(); clearTimeout(kwT); kwT = setTimeout(renderKw, 600); });
   });
   ov.querySelector('#kwBox').addEventListener('click', ev => {
     const b = ev.target.closest('[data-kw]');
