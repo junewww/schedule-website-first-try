@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日一牌 · Tarot Journal</title>
+<style>
+:root{
+  --bg:#f7f4ee; --surface:#fffdf9; --surface-2:#f1ece3; --line:#e3dccf;
+  --text:#2b2722; --muted:#8a8175; --accent:#7a5c3e; --accent-soft:#efe4d6;
+  --gold:#b08d57; --rev:#a14b4b; --ok:#5d7a55;
+  --shadow:0 1px 2px rgba(60,40,20,.06),0 6px 24px rgba(60,40,20,.06);
+  --serif:"Noto Serif SC","Songti SC","STSong","SimSun",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1a17; --surface:#25221e; --surface-2:#2d2924; --line:#3a352e;
+  --text:#ece6dc; --muted:#a19887; --accent:#d2b48c; --accent-soft:#3a3128;
+  --gold:#c9a66b; --rev:#d98080; --ok:#9cbf92; --shadow:0 1px 2px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --bg:#1c1a17; --surface:#25221e; --surface-2:#2d2924; --line:#3a352e;
+  --text:#ece6dc; --muted:#a19887; --accent:#d2b48c; --accent-soft:#3a3128;
+  --gold:#c9a66b; --rev:#d98080; --ok:#9cbf92; --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.brand{font-family:var(--serif);font-size:22px;letter-spacing:.06em}
+.brand small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted);letter-spacing:.1em}
+.tabs{display:flex;gap:4px;background:var(--surface-2);padding:3px;border-radius:999px}
+.tabs button{border:0;background:none;padding:5px 14px;border-radius:999px;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:8px;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.ghost{border-color:transparent;background:none}
+.icon-btn{border:1px solid var(--line);background:var(--surface);width:34px;height:34px;border-radius:8px;display:inline-grid;place-items:center}
+
+/* ---------- 月历 ---------- */
+.month-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.month-title{font-family:var(--serif);font-size:24px;min-width:150px}
+.month-title small{font-size:14px;color:var(--muted);margin-left:6px;font-family:var(--sans)}
+.stats{font-size:13px;color:var(--muted);margin-left:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dow{text-align:center;font-size:12px;color:var(--muted);padding:4px 0;letter-spacing:.1em}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:176px;padding:6px 6px 8px;position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;transition:border-color .15s, transform .15s}
+.day:hover{border-color:var(--accent)}
+.day.out{opacity:.35}
+.day.future{cursor:default;background:transparent}
+.day.future:hover{border-color:var(--line)}
+.day .dnum{align-self:flex-start;font-size:13px;color:var(--muted);line-height:1}
+.day.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.day.today .dnum{color:var(--surface);background:var(--gold);border-radius:999px;padding:3px 7px;margin:-2px 0 0 -2px}
+.day .thumb{width:58px;aspect-ratio:300/527;object-fit:cover;border-radius:4px;margin-top:4px;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.thumb.reversed,.big-card.reversed{transform:rotate(180deg)}
+.day .cname{font-family:var(--serif);font-size:13px;text-align:center;line-height:1.25;margin-top:4px}
+.day .cname .en{display:block;font-family:var(--sans);font-size:10px;color:var(--muted)}
+.rev-tag{display:inline-block;font-size:10px;color:var(--rev);border:1px solid currentColor;border-radius:3px;padding:0 3px;margin-left:3px;line-height:14px;vertical-align:1px;font-family:var(--sans)}
+.day .kws{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:4px}
+.kw-mini{font-size:10.5px;background:var(--accent-soft);color:var(--accent);padding:0 6px;border-radius:999px;line-height:18px;white-space:nowrap}
+.day .status{position:absolute;top:6px;right:7px;font-size:11px;color:var(--muted)}
+.day .empty-hint{margin:auto;color:var(--muted);font-size:12px;opacity:0;transition:opacity .15s}
+.day:hover .empty-hint{opacity:1}
+.day .inline-pick{width:100%;margin-top:auto;margin-bottom:auto}
+.day .inline-pick input{font-size:12px;padding:5px 7px}
+
+/* ---------- 联想下拉 ---------- */
+.combo{position:relative}
+.combo input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;outline:none}
+.combo input:focus{border-color:var(--accent)}
+.combo-list{position:absolute;z-index:50;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:320px;overflow:auto;padding:4px;min-width:220px}
+.combo-item{display:flex;gap:10px;align-items:center;padding:5px 8px;border-radius:7px;cursor:pointer}
+.combo-item img{width:24px;border-radius:2px}
+.combo-item .t{font-family:var(--serif);font-size:14px;line-height:1.2}
+.combo-item .t small{display:block;font-family:var(--sans);font-size:11px;color:var(--muted)}
+.combo-item.active,.combo-item:hover{background:var(--accent-soft)}
+.combo-empty{padding:8px;color:var(--muted);font-size:13px}
+
+/* ---------- 弹窗 ---------- */
+.overlay{position:fixed;inset:0;background:rgba(30,22,14,.38);display:flex;justify-content:center;align-items:flex-start;padding:0 16px;overflow:auto;z-index:20}
+.modal{background:var(--bg);border-radius:16px;max-width:980px;width:100%;margin:28px 0;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative}
+.modal-head{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);border-radius:16px 16px 0 0;z-index:5}
+.modal-head h2{margin:0;font-family:var(--serif);font-weight:500;font-size:19px;flex:1}
+.modal-head h2 small{font-family:var(--sans);font-size:13px;color:var(--muted);margin-left:6px}
+.saved{font-size:12px;color:var(--ok);opacity:0;transition:opacity .3s}
+.saved.show{opacity:1}
+.modal-body{display:grid;grid-template-columns:260px 1fr;gap:24px;padding:20px 18px 24px}
+.card-col{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.big-wrap{display:flex;justify-content:center;background:var(--surface-2);border-radius:12px;padding:16px}
+.big-card{width:180px;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.2);transition:transform .4s}
+.placeholder-card{width:180px;aspect-ratio:300/527;border:1.5px dashed var(--line);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
+.card-name{text-align:center;font-family:var(--serif);font-size:20px;line-height:1.3}
+.card-name small{display:block;font-family:var(--sans);font-size:13px;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:9px;padding:3px}
+.seg button{border:0;background:none;padding:6px;border-radius:7px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.seg button.on.rv{color:var(--rev)}
+.section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.section h3{margin:0 0 2px;font-family:var(--serif);font-weight:500;font-size:16px;display:flex;align-items:center;gap:8px}
+.section .sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+label.f{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+textarea{width:100%;min-height:78px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;resize:vertical;outline:none;line-height:1.6}
+textarea:focus{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:2px 10px;font-size:13px;line-height:22px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.chip.sug{border-color:var(--gold);border-style:dashed}
+.chip.custom .x{margin-left:4px;opacity:.7}
+.kw-group{margin-top:8px}
+.kw-group .lbl{font-size:12px;color:var(--muted);margin-bottom:4px}
+.kw-add{display:flex;gap:6px;margin-top:10px}
+.kw-add input{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:5px 9px;outline:none}
+.reveal-btn{width:100%;padding:12px;border:1px dashed var(--gold);background:none;border-radius:12px;color:var(--accent);font-family:var(--serif);font-size:15px}
+.muted{color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+
+/* ---------- 解读 ---------- */
+.interp .tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.tag{font-size:12px;background:var(--surface-2);padding:1px 9px;border-radius:999px;color:var(--muted)}
+.interp h4{font-family:var(--serif);font-weight:500;font-size:15px;margin:14px 0 6px;color:var(--accent)}
+.sym{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.sym dt{font-weight:600}
+.sym dd{margin:0;color:var(--muted)}
+.mean{border-left:3px solid var(--line);padding:6px 12px;margin:8px 0;border-radius:0 8px 8px 0}
+.mean.cur{border-left-color:var(--gold);background:var(--accent-soft)}
+.mean b{font-family:var(--serif);font-weight:500}
+.mean.rvm b{color:var(--rev)}
+.question{font-family:var(--serif);font-style:italic;background:var(--surface-2);padding:10px 14px;border-radius:10px;margin-top:12px}
+.history{font-size:13px;color:var(--muted)}
+.history a{color:var(--accent);cursor:pointer;text-decoration:underline;margin-right:8px}
+
+/* ---------- 牌库 ---------- */
+.lib-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.lib-bar input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;outline:none;min-width:200px}
+.filter{border:1px solid var(--line);background:var(--surface);padding:4px 12px;border-radius:999px;font-size:13px}
+.filter.on{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px}
+.lib-card{text-align:center;cursor:pointer;background:none;border:0;padding:0}
+.lib-card img{width:100%;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:transform .15s}
+.lib-card:hover img{transform:translateY(-3px)}
+.lib-card .n{font-family:var(--serif);font-size:13px;line-height:1.25;margin-top:4px}
+.lib-card .n small{display:block;font-family:var(--sans);font-size:10.5px;color:var(--muted)}
+.lib-card .cnt{font-size:10.5px;color:var(--gold)}
+
+.foot{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+@media (max-width:760px){
+  .modal-body{grid-template-columns:1fr}
+  .big-card,.placeholder-card{width:150px}
+  .day{min-height:96px;padding:4px 2px}
+  .day .thumb{width:34px}
+  .day .cname{font-size:11px}
+  .day .cname .en,.day .kws,.day .status{display:none}
+  .day .inline-pick{display:none}
+  .stats{margin-left:0;width:100%}
+  .overlay{padding:0}
+  .modal{border-radius:0;min-height:100%;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">每日一牌 <small>TAROT JOURNAL · RIDER–WAITE</small></div>
+    <div class="tabs" role="tablist">
+      <button data-view="cal" class="on">月历</button>
+      <button data-view="lib">牌库</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="exportBtn" title="下载一份 JSON 备份">导出备份</button>
+    <button class="btn" id="importBtn" title="从 JSON 备份恢复">导入备份</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <button class="icon-btn" id="themeBtn" title="切换深浅色">◐</button>
+  </header>
+
+  <section id="calView">
+    <div class="month-bar">
+      <button class="icon-btn" id="prevM" title="上个月">‹</button>
+      <div class="month-title" id="monthTitle"></div>
+      <button class="icon-btn" id="nextM" title="下个月">›</button>
+      <button class="btn ghost" id="todayBtn">回到今天</button>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="cal" id="cal"></div>
+  </section>
+
+  <section id="libView" hidden>
+    <div class="lib-bar">
+      <input id="libSearch" placeholder="搜索：temp / 星币 / 3 of cups …">
+      <span id="libFilters"></span>
+    </div>
+    <div class="lib" id="lib"></div>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="cards-data.js"></script>
+<script>
+(() => {
+'use strict';
+/* ================= 数据 ================= */
+const CARDS = window.TAROT_CARDS, SUITS = window.TAROT_SUITS, RANKS = window.TAROT_RANKS;
+const BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
+const norm = s => (s || '').toLowerCase().replace(/[\s·・\-_'’]/g, '');
+for (const c of CARDS) {
+  c._zh = norm(c.zh); c._en = norm(c.en);
+  c._all = norm([c.zh, c.en, c.alias, c.num].join(' ')) + ' ' + norm(c.en.replace(/^the /i, ''));
+  c._kwU = parseKw(c.ku); c._kwR = parseKw(c.kr);
+}
+function parseKw(s) { return s.split('|').map(k => { const t = k.split('/'); return { name: t[0], terms: t }; }); }
+const imgOf = id => `cards/${id}.jpg`;
+
+const KEY = 'tarotJournal.v1';
+let store;
+try { store = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { store = {}; }
+store.entries = store.entries || {};
+function persist() {
+  try { localStorage.setItem(KEY, JSON.stringify(store)); return true; }
+  catch (e) { toast('⚠ 浏览器存储失败，请立即“导出备份”'); return false; }
+}
+const getEntry = d => store.entries[d];
+function ensureEntry(d) { return store.entries[d] || (store.entries[d] = { card: null, rev: false, observe: '', feel: '', events: '', kw: [], custom: [] }); }
+function cleanup(d) {
+  const e = store.entries[d];
+  if (e && !e.card && !e.observe && !e.feel && !e.events && !(e.kw || []).length && !(e.custom || []).length) delete store.entries[d];
+}
+
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const todayStr = () => ymd(new Date());
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200); }
+
+/* 联想搜索：中文名 / 英文名 / 别名（星币3、钱币三、3 of pentacles…） */
+function search(q, limit = 14) {
+  const n = norm(q);
+  if (!n) return [];
+  const out = [];
+  CARDS.forEach((c, i) => {
+    let s = -1;
+    if (c._zh === n || c._en === n) s = 0;
+    else if (c._zh.startsWith(n)) s = 1;
+    else if (c._en.startsWith(n) || c._en.replace(/^the/, '').startsWith(n)) s = 2;
+    else if (c._zh.includes(n) || c._en.includes(n)) s = 3;
+    else if (c._all.includes(n)) s = 4;
+    if (s >= 0) out.push([s, i, c]);
+  });
+  return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, limit).map(x => x[2]);
+}
+
+function makeCombo(container, { placeholder, value, onPick, autofocus }) {
+  container.classList.add('combo');
+  container.innerHTML = `<input type="text" autocomplete="off" spellcheck="false" placeholder="${esc(placeholder)}">`;
+  const input = container.querySelector('input');
+  if (value) input.value = value;
+  let list = null, items = [], active = 0;
+  const close = () => { list && list.remove(); list = null; };
+  const render = () => {
+    items = search(input.value);
+    if (!list) { list = document.createElement('div'); list.className = 'combo-list'; container.appendChild(list); }
+    if (!input.value.trim()) { close(); return; }
+    active = Math.min(active, Math.max(items.length - 1, 0));
+    list.innerHTML = items.length ? items.map((c, i) => `
+      <div class="combo-item ${i === active ? 'active' : ''}" data-i="${i}">
+        <img src="${imgOf(c.id)}" alt=""><div class="t">${esc(c.zh)}<small>${esc(c.en)}</small></div>
+      </div>`).join('') : '<div class="combo-empty">没有找到这张牌</div>';
+    const a = list.querySelector('.active'); a && a.scrollIntoView({ block: 'nearest' });
+  };
+  const pick = c => { if (!c) return; input.value = `${c.zh} ${c.en}`; close(); onPick(c); };
+  input.addEventListener('input', () => { active = 0; render(); });
+  input.addEventListener('focus', () => { input.select(); if (input.value.trim()) render(); });
+  input.addEventListener('click', e => e.stopPropagation());
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, items.length - 1); render(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(items[active]); }
+    else if (e.key === 'Escape') { close(); e.stopPropagation(); }
+  });
+  input.addEventListener('blur', () => setTimeout(close, 150));
+  container.addEventListener('mousedown', e => {
+    const it = e.target.closest('.combo-item');
+    if (it) { e.preventDefault(); pick(items[+it.dataset.i]); }
+  });
+  if (autofocus) setTimeout(() => input.focus(), 30);
+  return input;
+}
+
+/* 关键词提取：在你写下的观察 / 感受 / 今日事件里，寻找与这张牌关键词（及同义词）相符的内容 */
+function suggestKw(card, rev, text) {
+  if (!card || !text) return [];
+  const t = norm(text);
+  const groups = rev ? [card._kwR, card._kwU] : [card._kwU, card._kwR];
+  const out = [];
+  for (const g of groups) for (const k of g)
+    if (k.terms.some(term => term && t.includes(norm(term))) && !out.includes(k.name)) out.push(k.name);
+  return out;
+}
+
+/* ================= 月历 ================= */
+let viewY, viewM;
+{ const t = new Date(); viewY = t.getFullYear(); viewM = t.getMonth(); }
+
+function renderCal() {
+  const first = new Date(viewY, viewM, 1);
+  const startOffset = (first.getDay() + 6) % 7; // 周一开头
+  const start = new Date(viewY, viewM, 1 - startOffset);
+  const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+  const weeks = Math.ceil((startOffset + daysInMonth) / 7);
+  const today = todayStr();
+  $('#monthTitle').innerHTML = `${viewY}年${viewM + 1}月<small>${first.toLocaleString('en', { month: 'long' })}</small>`;
+
+  let html = ['一', '二', '三', '四', '五', '六', '日'].map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const ds = ymd(d), e = getEntry(ds), c = e && e.card && BY_ID[e.card];
+    const out = d.getMonth() !== viewM, future = ds > today && !e;
+    const cls = ['day', out && 'out', ds === today && 'today', future && 'future'].filter(Boolean).join(' ');
+    let inner = `<span class="dnum">${d.getDate()}</span>`;
+    if (c) {
+      const kws = [...(e.kw || []), ...(e.custom || [])].slice(0, 3);
+      const done = e.events && e.events.trim();
+      inner += `<span class="status" title="${done ? '已完成晚间回顾' : '待晚间回顾'}">${done ? '☾' : '☀'}</span>
+        <img class="thumb ${e.rev ? 'reversed' : ''}" src="${imgOf(c.id)}" alt="${esc(c.zh)}" loading="lazy">
+        <div class="cname">${esc(c.zh)}${e.rev ? '<span class="rev-tag">逆</span>' : ''}<span class="en">${esc(c.en)}</span></div>
+        ${kws.length ? `<div class="kws">${kws.map(k => `<span class="kw-mini">${esc(k)}</span>`).join('')}</div>` : ''}`;
+    } else if (ds === today) {
+      inner += `<div class="inline-pick" data-date="${ds}"></div>`;
+    } else if (!future) {
+      inner += `<span class="empty-hint">＋ 记录</span>`;
+    }
+    html += `<div class="${cls}" data-date="${ds}" ${future ? '' : 'tabindex="0"'}>${inner}</div>`;
+  }
+  $('#cal').innerHTML = html;
+
+  // 今天的格子：直接输入牌名
+  const ip = $('#cal .inline-pick');
+  if (ip) makeCombo(ip, {
+    placeholder: '输入牌名…',
+    onPick: c => { const e = ensureEntry(ip.dataset.date); e.card = c.id; persist(); renderCal(); openDay(ip.dataset.date); }
+  });
+
+  // 统计
+  const monthEntries = Object.entries(store.entries).filter(([d, e]) => e.card && d.startsWith(`${viewY}-${pad(viewM + 1)}`)).map(x => x[1]);
+  if (monthEntries.length) {
+    const cnt = { major: 0, w: 0, c: 0, s: 0, p: 0 }; let rev = 0;
+    monthEntries.forEach(e => { const c = BY_ID[e.card]; cnt[c.arcana === 'major' ? 'major' : c.suit]++; if (e.rev) rev++; });
+    $('#stats').textContent = `本月 ${monthEntries.length} 天 · 大牌 ${cnt.major} · 权杖 ${cnt.w} · 圣杯 ${cnt.c} · 宝剑 ${cnt.s} · 星币 ${cnt.p} · 逆位 ${rev}`;
+  } else $('#stats').textContent = '';
+}
+
+$('#cal').addEventListener('click', e => {
+  if (e.target.closest('.inline-pick')) return;
+  const day = e.target.closest('.day');
+  if (!day || day.classList.contains('future')) return;
+  openDay(day.dataset.date);
+});
+$('#cal').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList.contains('day') && !e.target.classList.contains('future')) openDay(e.target.dataset.date);
+});
+$('#prevM').onclick = () => { if (--viewM < 0) { viewM = 11; viewY--; } renderCal(); };
+$('#nextM').onclick = () => { if (++viewM > 11) { viewM = 0; viewY++; } renderCal(); };
+$('#todayBtn').onclick = () => { const t = new Date(); viewY = t.getFullYear(); viewM = t.getMonth(); renderCal(); };
+
+/* ================= 解读面板 ================= */
+function interpHTML(c, rev) {
+  const tags = [c.arcana === 'major' ? `大阿尔卡纳 · ${c.num}` : `小阿尔卡纳 · ${SUITS[c.suit].zh} ${SUITS[c.suit].en}`,
+    `元素：${c.el}`, `占星：${c.astro}`].map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  const minorInfo = c.arcana === 'minor' ? `
+    <h4>花色与数字</h4>
+    <div class="hint" style="font-size:14px;color:var(--text)">
+      <b>${SUITS[c.suit].zh}（${SUITS[c.suit].en}）· ${SUITS[c.suit].el}元素</b>：${esc(SUITS[c.suit].domain)}。<br>
+      ${esc(RANKS[c.rank].idea)}
+    </div>` : '';
+  const kw = list => list.map(k => `<span class="chip">${esc(k.name)}</span>`).join('');
+  return `<div class="interp">
+    <div class="tags">${tags}</div>
+    ${minorInfo}
+    <h4>牌面元素</h4>
+    <dl class="sym">${c.img.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>
+    <h4>牌义</h4>
+    <div class="mean ${rev === false ? 'cur' : ''}"><b>正位 Upright</b><br>${esc(c.up)}</div>
+    <div class="mean rvm ${rev === true ? 'cur' : ''}"><b>逆位 Reversed</b><br>${esc(c.rev)}</div>
+    <h4>关键词</h4>
+    <div class="kw-group"><div class="lbl">正位</div><div class="chips">${kw(c._kwU)}</div></div>
+    <div class="kw-group"><div class="lbl">逆位</div><div class="chips">${kw(c._kwR)}</div></div>
+    <div class="question">✦ ${esc(c.q)}</div>
+    ${historyHTML(c.id)}
+  </div>`;
+}
+function historyHTML(id) {
+  const ds = Object.keys(store.entries).filter(d => store.entries[d].card === id).sort().reverse();
+  if (!ds.length) return '';
+  return `<h4>我抽到过这张牌（${ds.length} 次）</h4><div class="history">${ds.slice(0, 12).map(d =>
+    `<a data-go="${d}">${d}${store.entries[d].rev ? '（逆）' : ''}</a>`).join('')}</div>`;
+}
+
+let overlay = null;
+function closeModal() { if (overlay) { overlay._flush && overlay._flush(); overlay.remove(); overlay = null; document.body.style.overflow = ''; renderCal(); if (!$('#libView').hidden) renderLib(); } }
+function openOverlay(html) {
+  if (overlay) { overlay._flush && overlay._flush(); overlay.remove(); }
+  overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+  overlay.addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go) openDay(go.dataset.go);
+  });
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  return overlay;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay) closeModal(); });
+
+/* ================= 当日记录 ================= */
+function openDay(ds) {
+  const d = parseYmd(ds);
+  const e = getEntry(ds) || { card: null, rev: false, observe: '', feel: '', events: '', kw: [], custom: [] };
+  const prev = new Date(d); prev.setDate(d.getDate() - 1);
+  const next = new Date(d); next.setDate(d.getDate() + 1);
+  const nextAllowed = ymd(next) <= todayStr();
+  const ov = openOverlay(`
+    <div class="modal-head">
+      <button class="icon-btn" data-nav="${ymd(prev)}" title="前一天">‹</button>
+      <h2>${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日<small>星期${WEEK[d.getDay()]}${ds === todayStr() ? ' · 今天' : ''}</small></h2>
+      <span class="saved" id="saved">已自动保存 ✓</span>
+      <button class="icon-btn" data-nav="${ymd(next)}" title="后一天" ${nextAllowed ? '' : 'disabled style="opacity:.3"'}>›</button>
+      <button class="icon-btn" id="closeBtn" title="关闭 (Esc)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="card-col">
+        <div class="big-wrap" id="bigWrap"></div>
+        <div class="card-name" id="cardName"></div>
+        <div class="seg" id="seg"><button data-r="0">正位 Upright</button><button data-r="1" class="rv">逆位 Reversed</button></div>
+        <div id="pickBox"></div>
+        <div class="hint">输入中文、英文或简写，例如 “temp”、“星币3”、“3 of cups”、“侍从”。</div>
+      </div>
+      <div>
+        <div class="section">
+          <h3>☀ 上午 · 抽牌与初印象</h3>
+          <div class="sub">先别急着查牌义，只看画面。</div>
+          <label class="f" for="fObserve">牌面观察 —— 我看到了什么？（人物、颜色、动作、符号…）</label>
+          <textarea id="fObserve" placeholder="例：一个天使在两个杯子之间倒水，一只脚在水里…">${esc(e.observe)}</textarea>
+          <label class="f" for="fFeel">初步感受 —— 这张牌给我什么感觉？今天可能会怎样？</label>
+          <textarea id="fFeel" placeholder="例：感觉很平静，今天也许要注意节奏…">${esc(e.feel)}</textarea>
+        </div>
+        <div class="section">
+          <h3>☾ 晚上 · 今日回顾</h3>
+          <div class="sub">今天发生的、能与这张牌对应起来的事。</div>
+          <label class="f" for="fEvents">今天对应这张牌的事情</label>
+          <textarea id="fEvents" style="min-height:110px" placeholder="例：下午差点和同事吵起来，最后还是耐心地沟通，找到了中间方案…">${esc(e.events)}</textarea>
+          <label class="f">被印证的关键词 <span class="hint">（点选今天真正应验的；虚线框是根据你的记录自动找到的建议）</span></label>
+          <div id="kwBox"></div>
+        </div>
+        <div id="interpBox"></div>
+      </div>
+    </div>`);
+
+  let interpOpen = false;
+  const save = () => {
+    const en = ensureEntry(ds);
+    Object.assign(en, e, { updated: new Date().toISOString() });
+    cleanup(ds);
+    if (persist()) { const s = ov.querySelector('#saved'); s.classList.add('show'); clearTimeout(s._t); s._t = setTimeout(() => s.classList.remove('show'), 1200); }
+  };
+  let saveT; const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(save, 400); };
+
+  const renderCard = () => {
+    const c = e.card && BY_ID[e.card];
+    ov.querySelector('#bigWrap').innerHTML = c
+      ? `<img class="big-card ${e.rev ? 'reversed' : ''}" src="${imgOf(c.id)}" alt="${esc(c.zh)}">`
+      : `<div class="placeholder-card">在下方输入<br>今天抽到的牌</div>`;
+    ov.querySelector('#cardName').innerHTML = c ? `${esc(c.zh)}${e.rev ? '<span class="rev-tag">逆位</span>' : ''}<small>${esc(c.en)}</small>` : '';
+    ov.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', (b.dataset.r === '1') === !!e.rev));
+    renderKw(); renderInterp();
+  };
+
+  const allText = () => [e.observe, e.feel, e.events].join('\n');
+  const renderKw = () => {
+    const c = e.card && BY_ID[e.card], box = ov.querySelector('#kwBox');
+    if (!c) { box.innerHTML = '<div class="hint">先选择今天的牌。</div>'; return; }
+    const sug = suggestKw(c, e.rev, allText());
+    const chip = k => `<button class="chip ${e.kw.includes(k.name) ? 'on' : ''} ${sug.includes(k.name) && !e.kw.includes(k.name) ? 'sug' : ''}" data-kw="${esc(k.name)}">${esc(k.name)}</button>`;
+    const main = e.rev ? c._kwR : c._kwU, other = e.rev ? c._kwU : c._kwR;
+    box.innerHTML = `
+      <div class="kw-group"><div class="lbl">${e.rev ? '逆位' : '正位'}关键词</div><div class="chips">${main.map(chip).join('')}</div></div>
+      <div class="kw-group"><div class="lbl">${e.rev ? '正位' : '逆位'}关键词（有时也会应验）</div><div class="chips">${other.map(chip).join('')}</div></div>
+      ${e.custom.length ? `<div class="kw-group"><div class="lbl">我自己的关键词</div><div class="chips">${e.custom.map((k, i) => `<button class="chip on custom" data-ci="${i}">${esc(k)}<span class="x">×</span></button>`).join('')}</div></div>` : ''}
+      <div class="kw-add">
+        <button class="btn" id="autoKw" ${sug.filter(s => !e.kw.includes(s)).length ? '' : 'disabled'}>✦ 采纳建议（${sug.filter(s => !e.kw.includes(s)).length}）</button>
+        <input id="customKw" placeholder="添加自己的关键词，回车确认">
+      </div>`;
+  };
+
+  const renderInterp = () => {
+    const c = e.card && BY_ID[e.card], box = ov.querySelector('#interpBox');
+    if (!c) { box.innerHTML = ''; return; }
+    box.innerHTML = interpOpen
+      ? `<div class="section"><h3>📖 牌面解读 · ${esc(c.zh)} ${esc(c.en)}</h3>${interpHTML(c, !!e.rev)}</div>`
+      : `<button class="reveal-btn" id="revealBtn">📖 打开牌面解读，对比学习</button>`;
+  };
+
+  // 事件
+  makeCombo(ov.querySelector('#pickBox'), {
+    placeholder: '输入牌名…',
+    value: e.card ? `${BY_ID[e.card].zh} ${BY_ID[e.card].en}` : '',
+    autofocus: !e.card,
+    onPick: c => { if (e.card !== c.id) { e.card = c.id; e.kw = []; } renderCard(); save(); }
+  });
+  ov.querySelector('#seg').onclick = ev => { const b = ev.target.closest('button'); if (!b) return; e.rev = b.dataset.r === '1'; renderCard(); save(); };
+  [['#fObserve', 'observe'], ['#fFeel', 'feel'], ['#fEvents', 'events']].forEach(([sel, k]) => {
+    const ta = ov.querySelector(sel);
+    ta.addEventListener('input', () => { e[k] = ta.value; saveSoon(); });
+    ta.addEventListener('blur', renderKw);
+  });
+  ov.querySelector('#kwBox').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-kw]');
+    if (b) { const k = b.dataset.kw; e.kw = e.kw.includes(k) ? e.kw.filter(x => x !== k) : [...e.kw, k]; renderKw(); save(); return; }
+    const ci = ev.target.closest('[data-ci]');
+    if (ci) { e.custom.splice(+ci.dataset.ci, 1); renderKw(); save(); return; }
+    if (ev.target.id === 'autoKw') {
+      const c = BY_ID[e.card];
+      suggestKw(c, e.rev, allText()).forEach(k => { if (!e.kw.includes(k)) e.kw.push(k); });
+      renderKw(); save();
+    }
+  });
+  ov.querySelector('#kwBox').addEventListener('keydown', ev => {
+    if (ev.target.id === 'customKw' && ev.key === 'Enter') {
+      const v = ev.target.value.trim();
+      if (v && !e.custom.includes(v) && !e.kw.includes(v)) { e.custom.push(v); renderKw(); save(); setTimeout(() => ov.querySelector('#customKw').focus(), 0); }
+    }
+  });
+  ov.querySelector('#interpBox').addEventListener('click', ev => { if (ev.target.id === 'revealBtn') { interpOpen = true; renderInterp(); } });
+  ov.querySelector('#closeBtn').onclick = closeModal;
+  ov.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (!b.disabled) { clearTimeout(saveT); save(); openDay(b.dataset.nav); } });
+  // 关闭/切换前确保保存
+  ov._flush = () => { clearTimeout(saveT); save(); };
+
+  renderCard();
+}
+/* ================= 牌库 ================= */
+let libFilter = 'all';
+const FILTERS = [['all', '全部'], ['major', '大阿尔卡纳'], ['w', '权杖'], ['c', '圣杯'], ['s', '宝剑'], ['p', '星币']];
+$('#libFilters').innerHTML = FILTERS.map(([k, n]) => `<button class="filter ${k === 'all' ? 'on' : ''}" data-f="${k}">${n}</button>`).join(' ');
+$('#libFilters').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; libFilter = b.dataset.f; document.querySelectorAll('.filter').forEach(x => x.classList.toggle('on', x === b)); renderLib(); };
+$('#libSearch').oninput = renderLib;
+function renderLib() {
+  const q = $('#libSearch').value.trim();
+  let list = q ? search(q, 78) : CARDS;
+  list = list.filter(c => libFilter === 'all' || (libFilter === 'major' ? c.arcana === 'major' : c.suit === libFilter));
+  const counts = {}; Object.values(store.entries).forEach(e => e.card && (counts[e.card] = (counts[e.card] || 0) + 1));
+  $('#lib').innerHTML = list.map(c => `<button class="lib-card" data-card="${c.id}">
+    <img src="${imgOf(c.id)}" alt="${esc(c.zh)}" loading="lazy">
+    <div class="n">${esc(c.zh)}<small>${esc(c.en)}</small></div>
+    ${counts[c.id] ? `<div class="cnt">抽到 ${counts[c.id]} 次</div>` : ''}</button>`).join('') || '<div class="muted">没有找到</div>';
+}
+$('#lib').onclick = e => { const b = e.target.closest('[data-card]'); if (b) openCard(b.dataset.card); };
+function openCard(id) {
+  const c = BY_ID[id];
+  const ov = openOverlay(`
+    <div class="modal-head"><h2>${esc(c.zh)}<small>${esc(c.en)}</small></h2><button class="icon-btn" id="closeBtn">✕</button></div>
+    <div class="modal-body">
+      <div class="card-col"><div class="big-wrap"><img class="big-card" id="libBig" src="${imgOf(c.id)}" alt=""></div>
+        <div class="seg" id="seg"><button data-r="0" class="on">正位</button><button data-r="1" class="rv">逆位</button></div></div>
+      <div class="section" id="libInterp">${interpHTML(c, false)}</div>
+    </div>`);
+  ov.querySelector('#closeBtn').onclick = closeModal;
+  ov.querySelector('#seg').onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return; const r = b.dataset.r === '1';
+    ov.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b));
+    ov.querySelector('#libBig').classList.toggle('reversed', r);
+    ov.querySelector('#libInterp').innerHTML = interpHTML(c, r);
+  };
+}
+
+/* ================= 视图切换 / 备份 / 主题 ================= */
+document.querySelector('.tabs').onclick = e => {
+  const b = e.target.closest('[data-view]'); if (!b) return;
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('#calView').hidden = b.dataset.view !== 'cal'; $('#libView').hidden = b.dataset.view !== 'lib';
+  if (b.dataset.view === 'lib') renderLib(); else renderCal();
+};
+
+$('#exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `tarot-journal-${todayStr()}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  store.lastBackup = todayStr(); persist(); renderFoot(); toast('已导出备份');
+};
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data.entries) throw new Error('格式不对');
+    const n = Object.keys(data.entries).length;
+    if (!confirm(`备份中有 ${n} 天的记录。\n合并到当前数据吗？（同一天以备份为准）`)) return;
+    Object.assign(store.entries, data.entries); persist(); renderCal(); renderFoot(); toast(`已导入 ${n} 天`);
+  } catch (err) { alert('导入失败：' + err.message); }
+  ev.target.value = '';
+};
+
+const THEME_KEY = 'tarotJournal.theme';
+function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+try { applyTheme(localStorage.getItem(THEME_KEY)); } catch (e) {}
+$('#themeBtn').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const t = dark ? 'light' : 'dark'; applyTheme(t); try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+};
+
+function renderFoot() {
+  const n = Object.keys(store.entries).length;
+  const lb = store.lastBackup;
+  const stale = n && (!lb || (Date.now() - parseYmd(lb)) / 864e5 > 14);
+  $('#foot').innerHTML = `共 ${n} 天记录 · 数据保存在本浏览器中${lb ? ` · 上次备份 ${lb}` : ''}${stale ? ' · <b style="color:var(--rev)">建议导出一次备份</b>' : ''}`;
+}
+
+renderCal(); renderFoot();
+// 跨天自动刷新“今天”
+let lastDay = todayStr();
+setInterval(() => { if (todayStr() !== lastDay) { lastDay = todayStr(); if (!overlay) renderCal(); } }, 60000);
+})();
+</script>
+</body>
+</html>
