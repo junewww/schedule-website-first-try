@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>每日一牌 · Tarot Journal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
 :root{
   --bg:#f7f4ee; --surface:#fffdf9; --surface-2:#f1ece3; --line:#e3dccf;
@@ -16,9 +17,9 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#1c1a17; --surface:#25221e; --surface-2:#2d2924; --line:#3a352e;
   --text:#ece6dc; --muted:#a19887; --accent:#d2b48c; --accent-soft:#3a3128;
-  --gold:#c9a66b; --rev:#d98080; --ok:#9cbf92; --shadow:0 1px 2px rgba(0,0,0,.3);
+  --gold:#c9a66b; --rev:#d98080; --ok:#9cbf92; --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
 }}
-:root[data-theme="dark"]{
+:root[data-theme="dark"]{color-scheme:dark;
   --bg:#1c1a17; --surface:#25221e; --surface-2:#2d2924; --line:#3a352e;
   --text:#ece6dc; --muted:#a19887; --accent:#d2b48c; --accent-soft:#3a3128;
   --gold:#c9a66b; --rev:#d98080; --ok:#9cbf92; --shadow:0 1px 2px rgba(0,0,0,.3);
@@ -27,7 +28,7 @@
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
 header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .brand{font-family:var(--serif);font-size:22px;letter-spacing:.06em}
 .brand small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted);letter-spacing:.1em}
@@ -174,8 +175,8 @@ textarea:focus{border-color:var(--accent)}
       <button data-view="lib">牌库</button>
     </div>
     <div class="spacer"></div>
-    <button class="btn" id="exportBtn" title="下载一份 JSON 备份">导出备份</button>
-    <button class="btn" id="importBtn" title="从 JSON 备份恢复">导入备份</button>
+    <button class="btn" id="exportBtn" title="导出或恢复 JSON 备份">备份 / 恢复</button>
+    <span id="importBtn" hidden></span>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
     <button class="icon-btn" id="themeBtn" title="切换深浅色">◐</button>
   </header>
@@ -420,7 +421,7 @@ function openOverlay(html) {
     if (go) openDay(go.dataset.go);
   });
   document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
+  document.body.style.overflow = "hidden";
   return overlay;
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay) closeModal(); });
@@ -594,25 +595,54 @@ document.querySelector('.tabs').onclick = e => {
   if (b.dataset.view === 'lib') renderLib(); else renderCal();
 };
 
-$('#exportBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `tarot-journal-${todayStr()}.json`; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  store.lastBackup = todayStr(); persist(); renderFoot(); toast('已导出备份');
-};
-$('#importBtn').onclick = () => $('#importFile').click();
-$('#importFile').onchange = async ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  try {
-    const data = JSON.parse(await f.text());
-    if (!data.entries) throw new Error('格式不对');
-    const n = Object.keys(data.entries).length;
-    if (!confirm(`备份中有 ${n} 天的记录。\n合并到当前数据吗？（同一天以备份为准）`)) return;
-    Object.assign(store.entries, data.entries); persist(); renderCal(); renderFoot(); toast(`已导入 ${n} 天`);
-  } catch (err) { alert('导入失败：' + err.message); }
-  ev.target.value = '';
-};
+function mergeBackup(text) {
+  const data = JSON.parse(text);
+  if (!data || !data.entries) throw new Error('这不是本工具导出的备份（缺少 entries）');
+  const n = Object.keys(data.entries).length;
+  Object.assign(store.entries, data.entries);
+  if (data.lastBackup) store.lastBackup = data.lastBackup;
+  persist(); renderCal(); renderFoot(); return n;
+}
+function openBackup() {
+  const json = JSON.stringify(store, null, 2);
+  const ov = openOverlay(`
+    <div class="modal-head"><h2>备份与恢复<small>${Object.keys(store.entries).length} 天记录</small></h2><button class="icon-btn" id="closeBtn">✕</button></div>
+    <div style="padding:18px;display:grid;gap:14px">
+      <div class="section" style="margin:0">
+        <h3>导出</h3>
+        <div class="sub">复制下面的内容存到备忘录或文件里，或直接下载 JSON 文件（在线版可能无法下载，用复制即可）。</div>
+        <textarea id="bkOut" readonly style="min-height:140px;font-family:ui-monospace,monospace;font-size:12px">${esc(json)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="bkCopy">复制全部</button><button class="btn" id="bkDl">下载文件</button></div>
+      </div>
+      <div class="section" style="margin:0">
+        <h3>导入（合并，同一天以备份为准）</h3>
+        <div class="sub">粘贴之前导出的内容，或选择一个 JSON 备份文件。</div>
+        <textarea id="bkIn" style="min-height:100px;font-family:ui-monospace,monospace;font-size:12px" placeholder='{"entries": { ... }}'></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn primary" id="bkImport">导入粘贴的内容</button><button class="btn" id="bkFile">选择文件…</button></div>
+        <div class="hint" id="bkMsg" style="margin-top:6px"></div>
+      </div>
+    </div>`);
+  const mark = () => { store.lastBackup = todayStr(); persist(); renderFoot(); };
+  const msg = (t, bad) => { const m = ov.querySelector('#bkMsg'); m.textContent = t; m.style.color = bad ? 'var(--rev)' : 'var(--ok)'; };
+  ov.querySelector('#closeBtn').onclick = closeModal;
+  ov.querySelector('#bkCopy').onclick = () => {
+    const ta = ov.querySelector('#bkOut');
+    const fallback = () => { ta.focus(); ta.select(); toast('已选中全部，请按 Ctrl/⌘+C 复制'); };
+    try { navigator.clipboard.writeText(json).then(() => { mark(); toast('已复制备份'); }, fallback); } catch (e) { fallback(); }
+  };
+  ov.querySelector('#bkDl').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = `tarot-journal-${todayStr()}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000); mark();
+  };
+  const doImport = text => { try { const n = mergeBackup(text); msg(`已导入 ${n} 天的记录`); } catch (err) { msg('导入失败：' + err.message, true); } };
+  ov.querySelector('#bkImport').onclick = () => doImport(ov.querySelector('#bkIn').value);
+  ov.querySelector('#bkFile').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = async ev => { const f = ev.target.files[0]; if (f) doImport(await f.text()); ev.target.value = ''; };
+}
+$('#exportBtn').onclick = openBackup;
+$('#importBtn').onclick = openBackup;
 
 const THEME_KEY = 'tarotJournal.theme';
 function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
