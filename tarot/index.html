@@ -135,6 +135,22 @@ textarea:focus{border-color:var(--accent)}
 .mean.cur{border-left-color:var(--gold);background:var(--accent-soft)}
 .mean b{font-family:var(--serif);font-weight:500}
 .mean.rvm b{color:var(--rev)}
+.scenes{display:grid;gap:8px}
+.scene{display:grid;grid-template-columns:5.5em 1fr;gap:2px 12px;font-size:14px;padding:8px 0;border-top:1px solid var(--line)}
+.scene:first-child{border-top:0}
+.scene .sl{grid-row:span 2;font-family:var(--serif);color:var(--accent)}
+.scene .sx{color:var(--muted)}
+.scene .sx.cur{color:var(--text)}
+.scene .sx i{font-style:normal;font-size:11px;border:1px solid currentColor;border-radius:3px;padding:0 3px;margin-right:6px;color:var(--muted)}
+.scene .sx.cur i{color:var(--gold)}
+.scene .sx.rvx.cur i{color:var(--rev)}
+.mine{margin-top:18px;padding:14px 16px;border:1px solid var(--gold);border-radius:12px;background:var(--bg)}
+.mine h4{margin-top:0}
+.mine h4 small{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400;margin-left:6px}
+.mine .chip .n{font-size:11px;opacity:.75;margin-left:3px}
+.rec{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;margin-top:6px}
+.rec a{color:var(--accent);cursor:pointer;text-decoration:underline;white-space:nowrap}
+.rec span{color:var(--muted);min-width:0;overflow-wrap:anywhere}
 .question{font-family:var(--serif);font-style:italic;background:var(--surface-2);padding:10px 14px;border-radius:10px;margin-top:12px}
 .history{font-size:13px;color:var(--muted)}
 .history a{color:var(--accent);cursor:pointer;text-decoration:underline;margin-right:8px}
@@ -209,6 +225,7 @@ textarea:focus{border-color:var(--accent)}
 <div class="toast" id="toast"></div>
 
 <script src="cards-data.js"></script>
+<script src="cards-examples.js"></script>
 <script>
 (() => {
 'use strict';
@@ -401,19 +418,41 @@ function interpHTML(c, rev) {
     <h4>关键词</h4>
     <div class="kw-group"><div class="lbl">正位</div><div class="chips">${kw(c._kwU)}</div></div>
     <div class="kw-group"><div class="lbl">逆位</div><div class="chips">${kw(c._kwR)}</div></div>
+    ${scenesHTML(c, rev)}
     <div class="question">✦ ${esc(c.q)}</div>
-    ${historyHTML(c.id)}
+    ${mineHTML(c.id)}
   </div>`;
 }
-function historyHTML(id) {
-  const ds = Object.keys(store.entries).filter(d => store.entries[d].card === id).sort().reverse();
-  if (!ds.length) return '';
-  return `<h4>我抽到过这张牌（${ds.length} 次）</h4><div class="history">${ds.slice(0, 12).map(d =>
-    `<a data-go="${d}">${d}${store.entries[d].rev ? '（逆）' : ''}</a>`).join('')}</div>`;
+function scenesHTML(c, rev) {
+  const ex = (window.TAROT_EXAMPLES || {})[c.id];
+  if (!ex) return '';
+  return `<h4>不同场景里的样子 <span class="hint">（举例帮助联想，不是唯一答案）</span></h4><div class="scenes">${ex.map((pair, i) => {
+    const [u, r] = pair.split('|');
+    return `<div class="scene"><div class="sl">${esc(window.TAROT_SCENES[i])}</div>
+      <div class="sx ${rev !== true ? 'cur' : ''}"><i>正</i>${esc(u)}</div>
+      <div class="sx rvx ${rev === true ? 'cur' : ''}"><i>逆</i>${esc(r)}</div></div>`;
+  }).join('')}</div>`;
 }
-
+/* 我的牌义：自己写的理解 + 历次印证的关键词 + 每次的记录 */
+function mineHTML(id) {
+  const ds = Object.keys(store.entries).filter(d => store.entries[d].card === id).sort().reverse();
+  const note = (store.notes || {})[id] || '';
+  const tally = { up: {}, rv: {} };
+  ds.forEach(d => { const e = store.entries[d], t = e.rev ? tally.rv : tally.up; [...(e.kw || []), ...(e.custom || [])].forEach(k => t[k] = (t[k] || 0) + 1); });
+  const chips = t => Object.entries(t).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="chip on">${esc(k)}${n > 1 ? `<span class="n">×${n}</span>` : ''}</span>`).join('');
+  const kwPart = ['up', 'rv'].filter(o => Object.keys(tally[o]).length).map(o =>
+    `<div class="kw-group"><div class="lbl">${o === 'up' ? '正位' : '逆位'}时印证过的</div><div class="chips">${chips(tally[o])}</div></div>`).join('');
+  const snip = e => { const t = (e.events || e.feel || e.observe || '').replace(/\s+/g, ' ').trim(); return t ? (t.length > 70 ? t.slice(0, 70) + '…' : t) : '（还没写内容）'; };
+  return `<div class="mine">
+    <h4>我的牌义<small>${ds.length ? `抽到过 ${ds.length} 次` : '还没抽到过这张牌'}</small></h4>
+    <textarea data-note="${id}" placeholder="用自己的话写下你对这张牌的理解。比如：权杖五逆位 = 混乱被理顺，像把乱糟糟的家收拾整齐。每次抽到都可以回来补充。">${esc(note)}</textarea>
+    ${kwPart}
+    ${ds.length ? `<div class="kw-group"><div class="lbl">每次的记录</div><div class="rec">${ds.slice(0, 20).map(d =>
+      `<a data-go="${d}">${d.slice(5).replace('-', '/')}${store.entries[d].rev ? ' 逆' : ' 正'}</a><span>${esc(snip(store.entries[d]))}</span>`).join('')}</div></div>` : ''}
+  </div>`;
+}
 let overlay = null;
-function closeModal() { if (overlay) { overlay._flush && overlay._flush(); overlay.remove(); overlay = null; document.body.style.overflow = ''; renderCal(); if (!$('#libView').hidden) renderLib(); } }
+function closeModal() { if (overlay) { overlay._flush && overlay._flush(); persist(); overlay.remove(); overlay = null; document.body.style.overflow = ''; renderCal(); if (!$('#libView').hidden) renderLib(); } }
 function openOverlay(html) {
   if (overlay) { overlay._flush && overlay._flush(); overlay.remove(); }
   overlay = document.createElement('div');
@@ -424,6 +463,16 @@ function openOverlay(html) {
     const go = e.target.closest('[data-go]');
     if (go) openDay(go.dataset.go);
   });
+  let noteT;
+  overlay.addEventListener('input', e => {
+    const id = e.target.dataset && e.target.dataset.note;
+    if (!id) return;
+    store.notes = store.notes || {};
+    const v = e.target.value.trim();
+    if (v) store.notes[id] = e.target.value; else delete store.notes[id];
+    clearTimeout(noteT); noteT = setTimeout(persist, 400);
+  });
+  overlay.addEventListener('focusout', e => { if (e.target.dataset && e.target.dataset.note) persist(); });
   document.body.appendChild(overlay);
   document.body.style.overflow = "hidden";
   return overlay;
@@ -517,6 +566,7 @@ function openDay(ds) {
       </div>`;
   };
 
+  const refreshMine = () => { const m = ov.querySelector('#interpBox .mine'); if (m && e.card) m.outerHTML = mineHTML(e.card); };
   const renderInterp = () => {
     const c = e.card && BY_ID[e.card], box = ov.querySelector('#interpBox');
     if (!c) { box.innerHTML = ''; return; }
@@ -540,19 +590,19 @@ function openDay(ds) {
   });
   ov.querySelector('#kwBox').addEventListener('click', ev => {
     const b = ev.target.closest('[data-kw]');
-    if (b) { const k = b.dataset.kw; e.kw = e.kw.includes(k) ? e.kw.filter(x => x !== k) : [...e.kw, k]; renderKw(); save(); return; }
+    if (b) { const k = b.dataset.kw; e.kw = e.kw.includes(k) ? e.kw.filter(x => x !== k) : [...e.kw, k]; renderKw(); save(); refreshMine(); return; }
     const ci = ev.target.closest('[data-ci]');
-    if (ci) { e.custom.splice(+ci.dataset.ci, 1); renderKw(); save(); return; }
+    if (ci) { e.custom.splice(+ci.dataset.ci, 1); renderKw(); save(); refreshMine(); return; }
     if (ev.target.id === 'autoKw') {
       const c = BY_ID[e.card];
       suggestKw(c, e.rev, allText()).forEach(k => { if (!e.kw.includes(k)) e.kw.push(k); });
-      renderKw(); save();
+      renderKw(); save(); refreshMine();
     }
   });
   ov.querySelector('#kwBox').addEventListener('keydown', ev => {
     if (ev.target.id === 'customKw' && ev.key === 'Enter') {
       const v = ev.target.value.trim();
-      if (v && !e.custom.includes(v) && !e.kw.includes(v)) { e.custom.push(v); renderKw(); save(); setTimeout(() => ov.querySelector('#customKw').focus(), 0); }
+      if (v && !e.custom.includes(v) && !e.kw.includes(v)) { e.custom.push(v); renderKw(); save(); refreshMine(); setTimeout(() => ov.querySelector('#customKw').focus(), 0); }
     }
   });
   ov.querySelector('#interpBox').addEventListener('click', ev => { if (ev.target.id === 'revealBtn') { interpOpen = true; renderInterp(); } });
@@ -612,6 +662,7 @@ function mergeBackup(text) {
   const n = Object.keys(data.entries).length;
   Object.assign(store.entries, data.entries);
   if (data.lastBackup) store.lastBackup = data.lastBackup;
+  if (data.notes) store.notes = Object.assign(store.notes || {}, data.notes);
   persist(); renderCal(); renderFoot(); return n;
 }
 function openBackup() {
